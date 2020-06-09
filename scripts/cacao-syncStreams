@@ -135,6 +135,7 @@ dtlag="$7"
 
 cacao << EOF
 aolptmksyncs2 "$directory" ${stream0} ${stream1} ${tstart} ${tstop} ${dtsample} ${dtlag}
+listim
 savefits outC0 "!${stream0}.sync.fits"
 savefits outC1 "!${stream1}.sync.fits"
 listim

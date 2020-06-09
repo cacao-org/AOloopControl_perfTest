@@ -2,13 +2,6 @@
  * @file    AOloopControl_perfTest_status.c
  * @brief   Adaptive Optics Control loop engine testing
  * 
- * AO engine uses stream data structure
- *  
- * @author  O. Guyon
- * @date    21 Dec 2017
- *
- * 
- * @bug No known bugs.
  * 
  * 
  */
@@ -114,6 +107,55 @@ int_fast8_t AOloopControl_perfTest_printloopstatus(long loop, long nbcol, long I
 	float ARPFgainAutob_tot[100];
 
 
+	// START SHM log
+	FILE *fplog;
+	char flogname[200];
+	int perflogmode = 0;
+	struct timespec tnow;
+	struct tm *uttime;
+	char timestring[100];
+	
+	sprintf(flogname, "/milk/shm/aol%dperf.log", (int) loop);
+	fplog = fopen(flogname, "a");
+	if(fplog != NULL)
+	{
+		perflogmode = 1;
+		clock_gettime(CLOCK_REALTIME, &tnow);
+		uttime = gmtime(&tnow.tv_sec);	
+		
+		sprintf(timestring, "%ld.%09ld  %04d%02d%02dT%02d%02d%02d.%09ld", 
+			tnow.tv_sec, tnow.tv_nsec, 
+			1900+uttime->tm_year, 1+uttime->tm_mon, uttime->tm_mday,
+			uttime->tm_hour, uttime->tm_min,  uttime->tm_sec, tnow.tv_nsec);
+			
+		fprintf(fplog, "%s START LOG ENTRY from process %d\n", 
+			timestring,
+			(int) getpid());
+
+		fprintf(fplog, "%s TOTALFLUX     %12.3f\n", timestring, AOconf[loop].WFSim.WFStotalflux);
+		fprintf(fplog, "%s AVEFLUX       %12.3f\n", timestring, AOconf[loop].WFSim.WFStotalflux/AOconf[loop].WFSim.sizeWFS);
+		
+		fprintf(fplog, "%s DMC_AVE_RMS   %12.3f\n", timestring, 1000.0*AOconf[loop].AOpmodecoeffs.ALLave_Crms);
+		fprintf(fplog, "%s OL_AVE_RMS    %12.3f\n", timestring, 1000.0*AOconf[loop].AOpmodecoeffs.ALLave_OLrms);
+		fprintf(fplog, "%s CL_AVE_RMS    %12.3f\n", timestring, 1000.0*AOconf[loop].AOpmodecoeffs.ALLave_WFSrms);
+		fprintf(fplog, "%s CORR_RATIO    %12.3f\n", timestring, AOconf[loop].AOpmodecoeffs.ALLave_WFSrms/AOconf[loop].AOpmodecoeffs.ALLave_OLrms);
+
+		for(k=0; k<AOconf[loop].AOpmodecoeffs.DMmodesNBblock; k++)
+		{
+			fprintf(fplog, "%s BLK%02ld_DMC_AVE_RMS  %12.3f\n", timestring, k, 1000.0*AOconf[loop].AOpmodecoeffs.blockave_Crms[k]);
+			fprintf(fplog, "%s BLK%02ld_OL_AVE_RMS   %12.3f\n", timestring, k, 1000.0*AOconf[loop].AOpmodecoeffs.blockave_OLrms[k]);
+			fprintf(fplog, "%s BLK%02ld_CL_AVE_RMS   %12.3f\n", timestring, k, 1000.0*AOconf[loop].AOpmodecoeffs.blockave_WFSrms[k]);
+			fprintf(fplog, "%s BLK%02ld_CORR_RATIO   %12.3f\n", timestring, k, AOconf[loop].AOpmodecoeffs.blockave_WFSrms[k]/AOconf[loop].AOpmodecoeffs.blockave_OLrms[k]);
+		}    
+		
+		fclose(fplog);
+	}
+	else
+	{
+		perflogmode = 0;
+	}
+	
+
     printw("    loop number %ld    ", loop);
 
 
@@ -192,7 +234,7 @@ int_fast8_t AOloopControl_perfTest_printloopstatus(long loop, long nbcol, long I
 
     kmax = (wrow-28)*(nbcol);
 
-	printw("WFS IMAGE TOTAL = %10f -> AVE = %10.3f\n", AOconf[loop].WFSim.WFStotalflux, AOconf[loop].WFSim.WFStotalflux/AOconf[loop].WFSim.sizeWFS);
+	printw("WFS IMAGE TOTAL = %10f -> AVE = %10.3f\n", AOconf[loop].WFSim.WFStotalflux, AOconf[loop].WFSim.WFStotalflux/AOconf[loop].WFSim.sizeWFS);		
     printw("    Gain = %5.3f   maxlim = %5.3f     GPU = %d    kmax=%ld\n", AOconf[loop].aorun.gain, AOconf[loop].aorun.maxlimit, AOconf[loop].AOcompute.GPU0, kmax);
    
     printw("    DMprimWrite = %d   Predictive control state: %d        ARPF gain = %5.3f   AUTOTUNE LIM = %d (perc = %.2f %%  delta = %.3f nm mcoeff=%4.2f) GAIN = %d\n", 
@@ -226,7 +268,15 @@ int_fast8_t AOloopControl_perfTest_printloopstatus(long loop, long nbcol, long I
 	if(AOconf[loop].aorun.ARPFon==1)
 		printw("  PFres  |  Ratio | PFautog |");
 	printw("\n");
-	printw("\n");
+	
+	if(perflogmode == 1)
+	{
+		printw("---- logging to file %s ---------\n", flogname);
+	}
+	else
+	{
+		printw("---- NOT LOGGING TO FILE ---- (provide file %s to log)\n -----\n", flogname);
+	}
 
     for(k=0; k<AOconf[loop].AOpmodecoeffs.DMmodesNBblock; k++)
     {

@@ -193,6 +193,7 @@ timeend=$((timestart + timespan))
 echo "TIME : $timestart -> $timeend ====================================="
 
 
+
 vOK="1"
 
 
@@ -201,6 +202,7 @@ echo "WFS last log at $lastLogTimeWFS"
 
 if [ "$lastLogTimeWFS" -lt "$timeend" ]; then
 vOK="0"
+echo "   WFS: lastlogtime less than timeend"
 fi
 
 
@@ -209,7 +211,12 @@ echo "PSF last log at $lastLogTimePSF"
 
 if [ "$lastLogTimePSF" -lt "$timeend" ]; then
 vOK="0"
+echo "   PSF: lastlogtime less than timeend"
 fi
+
+
+
+
 
 
 if [ "$vOK" = "1" ]; then
@@ -219,10 +226,13 @@ echo "=================================================================== PROCES
 
 
 # generate synchronized cubes
+echo "RUNNING: cacao-syncStreams \"$logdirectory/$datestr\" $streamWFS $streamPSF $timestart $timeend  $texp $dtlag"
 cacao-syncStreams "$logdirectory/$datestr" $streamWFS $streamPSF $timestart $timeend  $texp $dtlag
+exit
 
 # generate selection
 cacao-selectWFSframes -a $ALPHAnorm $streamWFS.sync.fits $streamPSF.sync.fits $selFrac $windowx0 $windowx1 $windowy0 $windowy1 $evalMode
+
 
 
 cacao << EOF
@@ -260,6 +270,11 @@ else
 echo "WAITING. .."
 sleep 2
 fi
+
+
+
+
+
 
 
 if [ "$iter" -eq "$NBiter" ]; then
